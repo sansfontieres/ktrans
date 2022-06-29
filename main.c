@@ -322,6 +322,13 @@ changelang(int c)
 		return 1;
 	}
 
+	if (c=='') {              /* ^s (Korean mode) */
+		natural = 0;
+		table = hangul;
+		llen = 0;
+		return 1;
+	}
+
 	if (c=='') {              /* ^t (English mode) */
 		natural = 1;
 		llen = 0;
