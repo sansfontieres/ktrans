@@ -334,7 +334,7 @@ changelang(int c)
 		llen = 0;
 		return 1;
 	}
-	if (c=='') {               /* ^g (Greek mode ) */
+	if (c=='') {               /* ^o (Greek mode ) */
 		natural = 0;
 		table = greek;
 		llen = 0;

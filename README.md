@@ -18,14 +18,15 @@ I updated it with some light tweaks and cleaned up the unnecessary files.
 ## Changes
 
 - `$jisho` replaces `$KTJISHO`
-- Ctrl+t replaces Ctrl+e
+- Ctrl+t replaces Ctrl+e to stop transliteration (now you can go at the end of a line)
+- Ctrl+o replaces Ctrl+g to transliterate Greek alphabet (now you can switch between a file and a command window in sam)
 
 
 ## Usage
 
 Run `mk install` and add start your next rio session by adding `ktrans` right before rio in your `$home/lib/profile`. The dictionnary to translate kana to kanji is expected to be `$home/lib/kanji.dict` but you can define a custom location with the environment variable `$jisho`.
 
-Your next rio session will start with ktrans enabled. Refer to Kenji’s README for more usage informations, but keep in mind the list of changes. If Shift+Spaced doesn’t work for kanji translation, try Ctrl+\.
+Your next rio session will start with ktrans enabled. Refer to Kenji’s README for more usage informations, but keep in mind the list of changes. If Shift+Spaced doesn’t work for kanji translation, try Ctrl+\\.
 
 
 ## Custom dictionnary
