@@ -8,7 +8,7 @@
 
 #include <u.h>
 #include <libc.h>
-#include <stdio.h>
+#include <bio.h>
 #include "ktrans.h"
 #include "jisho.h"
 
@@ -24,7 +24,6 @@ int	natural = 1;				/* not Japanese but English mode */
 
 int	changelang(int);
 int	dotrans(Dictionary*);
-int	noter(void *, char *);
 int	nrune(char *);
 void	send(uchar *, int);
 Map	*match(uchar *p, int *nc, Map *table);
@@ -35,6 +34,61 @@ extern KouhoList *getKouhoFile(DicList*, char *);
 extern void freeQDIC(Dictionary*);
 extern void selectKouho(KouhoList **, KouhoList*);
 
+void
+kbdopen(void)
+{
+	int n, kinfd, koutfd, fd[2];
+	char buf[128];
+	int kbd;
+
+	kbd = 1;
+	if((kinfd = open("/dev/kbd", OREAD)) < 0){
+		kbd = 0;
+		if((kinfd = open("/dev/cons", OREAD)) < 0)
+			sysfatal("open kbd: %r");
+	}
+	if(bind("#|", "/n/temp", MREPL) < 0)
+		sysfatal("bind /n/temp: %r");
+	if((koutfd = open("/n/temp/data1", OWRITE)) < 0)
+		sysfatal("open kbd pipe: %r");
+	if(bind("/n/temp/data", kbd? "/dev/kbd": "/dev/cons", MREPL) < 0)
+		sysfatal("bind kbd pipe: %r");
+	unmount(nil, "/n/temp");
+	if(!kbd){
+		in = kinfd;
+		out = koutfd;
+		return;
+	}
+	if(pipe(fd) < 0)
+		sysfatal("pipe: %r");
+	if(fork()){
+		in = out = fd[0];
+		close(fd[1]);
+		close(kinfd);
+		close(koutfd);
+		return;
+	}
+	close(fd[0]);
+	if(fork()){
+		Biobuf b;
+		long r;
+
+		Binit(&b, fd[1], OREAD);
+		while((r = Bgetrune(&b)) >= 0){
+			n = snprint(buf, sizeof(buf), "c%C", (Rune)r)+1;
+			write(koutfd, buf, n);	/* pass on result */
+		}
+	} else {
+		while((n = read(kinfd, buf, sizeof(buf))) > 0){
+			buf[n-1] = 0;
+			if(n < 2 || buf[0] != 'c')
+				write(koutfd, buf, n);		/* pass on */
+			else
+				write(fd[1], buf+1, n-2);	/* to translator */
+		}
+	}
+	exits(0);
+}
 
 void
 main(int argc, char **argv)
@@ -50,20 +104,15 @@ main(int argc, char **argv)
 	USED(argc);
 	USED(argv);
 
-	dicname = getenv("KTJISHO");
+	dicname = getenv("jisho");
 	if(!dicname)
-	    dicname = strcat(getenv("home"), "/lib/ktrans-jisho");
+	    dicname = strcat(getenv("home"), "/lib/kanji.dict");
 	strcpy(jishoname, dicname);
 	jisho = openQDIC(jishoname);
 
-	in = _IO_stream[0].fd;
-	out = _IO_stream[1].fd;
-
-	if (rfork(RFPROC))
-		exits(0);            /*  parent process will die */
-
-
-	atnotify(noter, 1);
+	kbdopen();
+	if(fork())
+		exits(0);            /*  parent process will exit */
 
 	bp = ep = buf;                 /* bp = base point of input string  */
                                        /* ep = end point of input string */
@@ -163,16 +212,6 @@ main(int argc, char **argv)
 			}
 		}
 	}
-}
-
-int
-noter(void *x, char *note)
-{
-	USED(x);
-	if (strcmp(note, "interrupt")==0)
-		return 1;
-	else
-		return 0;
 }
 
 int
@@ -283,7 +322,7 @@ changelang(int c)
 		return 1;
 	}
 
-	if (c=='') {              /* ^e (English mode) */
+	if (c=='') {              /* ^t (English mode) */
 		natural = 1;
 		llen = 0;
 		return 1;
@@ -337,7 +376,7 @@ dotrans(Dictionary *dic)
 
 	res = lbuf;
 	for (j=0; *res != L'\0'; j += runetochar(v+j, res++));
-	v[j++] = '\0';
+	v[j] = '\0';
 	strcpy(tbuf, v);
 	strcpy(hirabuf, v);		/* to remeber the initial hiragana input */
 	if (okuri && joshi != 1) hirabuf[strlen(hirabuf) - 1] = '\0';   /* verb mode */
@@ -383,7 +422,7 @@ dotrans(Dictionary *dic)
 			for (j=0; j<lastlen; j++)
 			   write(out, "\b", 1);
 		   }
-		   for (j=0, lastlen=0; *p != 0; p += j) {
+		   for (lastlen=0; *p != 0; p += j) {
 			j = chartorune(r, p);
 			lastlen++;
 		   }
@@ -395,7 +434,6 @@ dotrans(Dictionary *dic)
 		   	write(out, (char *)okurigana, olen);
 		   olen = okuri = joshi = 0;
 		   okurigana[0] = 0;
-		   nokouho = 1;
 		   break;
 		}
 	   }

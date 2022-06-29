@@ -1,0 +1,8 @@
+#!/bin/rc
+
+if(test -e /env/jisho)
+	dict=$jisho
+if not 
+	dict=$home/lib/test.dict
+
+ssam ',x/;;.*\n/d' $home/lib/*.kanji.dict >> $dict
