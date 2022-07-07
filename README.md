@@ -14,6 +14,9 @@ README
 
 I updated it with some light tweaks and cleaned up the unnecessary files.
 
+**Note**:
+ktrans was merged into 9front, this repository is archived.
+
 
 ## Changes
 
